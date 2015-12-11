@@ -5,6 +5,7 @@ import android.support.v4.content.AsyncTaskLoader;
 import android.util.Log;
 
 import com.liftoff.demo.dao.Location;
+import com.liftoff.demo.util.NetworkUtil;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -28,22 +29,28 @@ public class SearchLocationLoader extends AsyncTaskLoader<List<Location>> {
     private InputStream iStream = null;
     private HttpURLConnection urlConnection = null;
     private String queryURL, reference, sensor, parameters, output, types, searchParam;
+    private NetworkUtil networkUtil;
 
     public SearchLocationLoader(Context context, String searchParam) {
         super(context);
         this.searchParam = searchParam;
+        networkUtil = new NetworkUtil(context);
     }
 
     @Override
     public List<Location> loadInBackground() {
-        try {
-            List<Location> data = new ArrayList<>();
-            for (final HashMap<String, String> hMap : getLocationSearchDetails()) {
-                data.addAll(getLocationDetails(hMap.get("reference")));
+        if(networkUtil.isNetworkAvailable()) {
+            try {
+                List<Location> data = new ArrayList<>();
+                for (final HashMap<String, String> hMap : getLocationSearchDetails()) {
+                    data.addAll(getLocationDetails(hMap.get("reference")));
+                }
+                return data;
+            } catch (Exception e) {
+                Log.d("Exception", e.toString());
+                return null;
             }
-            return data;
-        } catch (Exception e) {
-            Log.d("Exception", e.toString());
+        } else {
             return null;
         }
     }

@@ -8,6 +8,7 @@ import android.util.Log;
 import com.google.android.gms.maps.model.LatLng;
 import com.liftoff.demo.dao.enums.Event;
 import com.liftoff.demo.dao.interfaces.LocationDirectionRequestListener;
+import com.liftoff.demo.util.NetworkUtil;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -31,6 +32,7 @@ public class LocationDirectionTask extends AsyncTask<LatLng, Void, Event> {
     private ProgressDialog progressDialog;
     private LocationDirectionRequestListener locationDirectionRequestListener;
     private List<List<HashMap<String, String>>> routes = null;
+    private NetworkUtil networkUtil;
 
     public LocationDirectionTask(int requestId, Context context, LocationDirectionRequestListener locationDirectionRequestListener) {
         progressDialog = new ProgressDialog(context);
@@ -38,6 +40,7 @@ public class LocationDirectionTask extends AsyncTask<LatLng, Void, Event> {
         progressDialog.setMessage("Fetching directions...");
         this.locationDirectionRequestListener = locationDirectionRequestListener;
         this.requestId = requestId;
+        this.networkUtil = new NetworkUtil(context);
     }
 
     @Override
@@ -48,35 +51,39 @@ public class LocationDirectionTask extends AsyncTask<LatLng, Void, Event> {
 
     @Override
     protected Event doInBackground(LatLng... params) {
-        try {
-            String str_origin = "origin=" + params[0].latitude + "," + params[0].longitude;
-            String str_dest = "destination=" + params[1].latitude + "," + params[1].longitude;
-            String sensor = "sensor=false";
-            String parameters = str_origin + "&" + str_dest + "&" + sensor;
-            String output = "json";
-            String strUrl = "https://maps.googleapis.com/maps/api/directions/" + output + "?" + parameters;
+        if(networkUtil.isNetworkAvailable()) {
+            try {
+                String str_origin = "origin=" + params[0].latitude + "," + params[0].longitude;
+                String str_dest = "destination=" + params[1].latitude + "," + params[1].longitude;
+                String sensor = "sensor=false";
+                String parameters = str_origin + "&" + str_dest + "&" + sensor;
+                String output = "json";
+                String strUrl = "https://maps.googleapis.com/maps/api/directions/" + output + "?" + parameters;
 
-            String data = "";
-            InputStream iStream = null;
-            HttpURLConnection urlConnection = null;
+                String data = "";
+                InputStream iStream = null;
+                HttpURLConnection urlConnection = null;
 
-            URL url = new URL(strUrl);
-            urlConnection = (HttpURLConnection) url.openConnection();
-            urlConnection.connect();
-            iStream = urlConnection.getInputStream();
-            BufferedReader br = new BufferedReader(new InputStreamReader(iStream));
-            StringBuffer sb = new StringBuffer();
-            String line = "";
-            while ((line = br.readLine()) != null) {
-                sb.append(line);
+                URL url = new URL(strUrl);
+                urlConnection = (HttpURLConnection) url.openConnection();
+                urlConnection.connect();
+                iStream = urlConnection.getInputStream();
+                BufferedReader br = new BufferedReader(new InputStreamReader(iStream));
+                StringBuffer sb = new StringBuffer();
+                String line = "";
+                while ((line = br.readLine()) != null) {
+                    sb.append(line);
+                }
+                data = sb.toString();
+                br.close();
+                Log.e("Test", data);
+                routes = parse(new JSONObject(data));
+                return Event.SUCCESS;
+            } catch (Exception e) {
+                return Event.EXCEPTION;
             }
-            data = sb.toString();
-            br.close();
-            Log.e("Test", data);
-            routes = parse(new JSONObject(data));
-            return Event.SUCCESS;
-        } catch (Exception e) {
-            return Event.EXCEPTION;
+        } else {
+            return Event.NO_NETWORK;
         }
     }
 
